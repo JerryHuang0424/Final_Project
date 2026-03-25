@@ -1,0 +1,20 @@
+# 建议在anaconda中新建一个独立的环境
+
+pytorch #最先安装
+ollama
+
+streamlit
+
+pip install -U langchain
+
+#FAISS如果使用pip安装，只能安装cpu版本，但是我们通过conda就可以安装GPU版本
+# 激活你的 conda 环境
+conda activate “你自己新建的环境”
+# 安装 GPU 版本
+conda install -c conda-forge faiss-gpu
+
+sentence-transformers
+pypdf
+langchain_text_splitters
+langchain_community 
+langchain_huggingface 
