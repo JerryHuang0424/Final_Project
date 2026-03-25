@@ -1,7 +1,6 @@
 # 建议在anaconda中新建一个独立的环境
 
 pytorch #最先安装
-ollama
 
 streamlit
 
@@ -16,5 +15,6 @@ conda install -c conda-forge faiss-gpu
 sentence-transformers
 pypdf
 langchain_text_splitters
-langchain_community 
-langchain_huggingface 
+langchain_community
+langchain_huggingface
+openai 
