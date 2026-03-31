@@ -5,7 +5,7 @@ import streamlit as st
 
 @st.cache_resource
 def get_embedding_model():
-    from constants import EMBEDDING_MODEL
+    from str.constants import EMBEDDING_MODEL
     #st.write(f'Attempting to load embedding model:{EMBEDDING_MODEL}')
 
     model_kwargs_dict = {"device": "cpu"}

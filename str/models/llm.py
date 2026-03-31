@@ -1,5 +1,5 @@
 import streamlit as st
-import constants
+import str.constants as constants
 from openai import OpenAI
 
 def check_ollama_model_availbility():

@@ -1,15 +1,18 @@
 import streamlit as st
-import constants
+import str.constants as constants
 from str.models.embeddings import get_embedding_model
 from str.models.llm import check_ollama_model_availbility
 from str.core.file_processor import get_pdf_text, get_text_into_chunks
 from str.core.vector_store import update_vector_store
 from str.models.llm import query_llm_stream
 from str.core.rag import create_rag_prompt
-
+import str.constants as constants
+import str.main as main
 
 
 #Caching
+
+
 
 
 # set_page_config的作用是定义页面的宽度，默认为”centered“，设置为”wide“可以让页面占满整个屏幕宽度。
@@ -21,13 +24,14 @@ if "messages" not in st.session_state:
     st.session_state.messages = [{"role": "assistant", "content": "Hello! Please upload a PDF to start the conversation."}]
 if "ollama_model_available" not in st.session_state:
     st.session_state.ollama_model_available = False
-if "processed_files" not in st.session_state:
-    st.session_state.processed_files = set()
 if "vector_store" not in st.session_state:
     st.session_state.vector_store = None
+if "enable_llm_top_k_test" not in st.session_state:
+    st.session_state.enable_llm_top_k_test = True
 
 check_ollama_model_availbility()
 
+main.__main__()
 
 with st.sidebar:
     st.header("Settings")
@@ -42,8 +46,6 @@ with st.sidebar:
         if embedding_model_instance:
             st.success("Embedding model loaded successfully.")
             if file_submit:
-                if st.session_state.chunk_size != constants.CHUNK_SIZE or st.session_state.chunk_overlap != constants.CHUNK_OVERLAP:
-                    st.sidebar.caption("Note: Chunk size/overlap for new docs is based on current RAG settings.")
                 raw_text_from_new_file = get_pdf_text(uploaded_file) 
                 # st.session_state.messages.append({"role": "user", "content": f"Uploaded {len(uploaded_file)} file(s). Extracting text and creating chunks..."})
                 # st.session_state.messages.append({"role": "assistant", "content": raw_text_from_new_file})
@@ -68,31 +70,19 @@ with st.sidebar:
     st.divider()
 
     st.subheader("RAG Chat")
-    if "chunk_size" not in st.session_state:
-        st.session_state.chunk_size = constants.CHUNK_SIZE
-    if "chunk_overlap" not in st.session_state:
-        st.session_state.chunk_overlap = constants.CHUNK_OVERLAP
-    if "retriever_k" not in st.session_state:
-        st.session_state.retriever_k = constants.RETRIEVER_K
 
-    st.session_state.chunk_size = st.number_input("Chunk Size (chars)", key="sb_chunk_size",  min_value=100, max_value=5000, value=st.session_state.chunk_size, step=100)
-    st.session_state.chunk_overlap = st.number_input("Chunk Overlap (chars)", key="sb_chunk_overlap", min_value=0, max_value=1000, value=st.session_state.chunk_overlap, step=50)
-    st.session_state.retriever_k = st.number_input("Chunks to Retrieve (k_retriever)", key="sb_retriever_k", min_value=1, max_value=20, value=st.session_state.retriever_k, step=1)
-        
+   
     # LLM Settings
     st.subheader("LLM Settings")
-    if 'llm_temperature' not in st.session_state: st.session_state.llm_temperature = constants.LLM_TEMPERATURE
-    if 'use_top_k_for_llm' not in st.session_state: st.session_state.use_top_k_for_llm = 1 
-    if 'enable_llm_top_k_test' not in st.session_state: st.session_state.enable_llm_top_k_test = True 
+    # if 'llm_temperature' not in st.session_state: st.session_state.llm_temperature = constants.LLM_TEMPERATURE
+    # if 'use_top_k_for_llm' not in st.session_state: st.session_state.use_top_k_for_llm = 1 
+    # if 'enable_llm_top_k_test' not in st.session_state: st.session_state.enable_llm_top_k_test = True 
 
-    st.session_state.llm_temperature = st.slider("LLM Temperature", min_value=0.0, max_value=2.0, value=st.session_state.llm_temperature, step=0.1)
-    st.session_state.enable_llm_top_k_test = st.checkbox("TEST: Use only N retrieved chunk(s) for LLM Prompt", value=st.session_state.enable_llm_top_k_test, key="cb_enable_llm_top_k")
-    if st.session_state.enable_llm_top_k_test:
-        st.session_state.use_top_k_for_llm = st.number_input("N (chunks for LLM prompt if test enabled)", min_value=1, max_value=st.session_state.retriever_k, value=st.session_state.use_top_k_for_llm, step=1, key="ni_use_top_k_for_llm")
+    # st.session_state.llm_temperature = st.slider("LLM Temperature", min_value=0.0, max_value=2.0, value=st.session_state.llm_temperature, step=0.1)
+    # st.session_state.enable_llm_top_k_test = st.checkbox("TEST: Use only N retrieved chunk(s) for LLM Prompt", value=st.session_state.enable_llm_top_k_test, key="cb_enable_llm_top_k")
     
     if st.session_state.vector_store:
         st.sidebar.success("Knowledge base is ready!")
-        st.sidebar.write(f"Total unique files processed: {len(st.session_state.processed_files)}")
     elif uploaded_file and not st.session_state.vector_store : # If tried to process but failed
         st.sidebar.warning("Knowledge base processing may have encountered issues or is empty.")
     else: # Default state
@@ -123,13 +113,13 @@ if prompt:
                 full_response_content = "Embedding model is not available. Please check the sidebar for details."
                 st.write(full_response_content)
             else:
-                retriever = st.session_state.vector_store.as_retriever(search_kwargs={"k": st.session_state.retriever_k})
+                retriever = st.session_state.vector_store.as_retriever(search_kwargs={"k":constants.RETRIEVER_K})
                 try:
                     all_relevant_docs = retriever.invoke(prompt) 
                     final_context_chunks_for_llm = []
                     if all_relevant_docs:
                         if st.session_state.enable_llm_top_k_test:
-                            num_chunks_to_use = min(st.session_state.use_top_k_for_llm, len(all_relevant_docs))
+                            num_chunks_to_use = min(constants.RETRIEVER_K, len(all_relevant_docs))
                             final_context_chunks_for_llm = [doc.page_content for doc in all_relevant_docs[:num_chunks_to_use]]
                             st.info(f"🧪 Using Top-{num_chunks_to_use} retrieved chunk(s) for LLM prompt.")
                         else:
