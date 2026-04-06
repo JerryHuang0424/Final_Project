@@ -1,0 +1,22 @@
+# Python dependencies for RAG project
+
+# Core dependencies
+langchain-community
+langchain-text-splitters
+langchain-chroma
+langchain-huggingface
+
+# Vector database
+chromadb
+
+# PDF processing
+pypdf
+
+# Machine learning
+torch
+
+# Environment variable management
+python-dotenv
+
+# HTTP requests (for API calls)
+requests

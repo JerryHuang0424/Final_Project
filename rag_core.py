@@ -1,0 +1,103 @@
+#!/usr/bin/env python3
+"""
+Core RAG function for retrieving relevant information from Chroma vector store
+"""
+
+from backend_database import load_data_from_chroma, get_embbeding_model
+from langchain_chroma import Chroma
+
+def rag_retrieve(user_prompt, top_k=5):
+    """
+    RAG function that retrieves top-k similar chunks from Chroma database
+    and formats them for direct LLM input.
+
+    Args:
+        user_prompt (str): The user's question or prompt
+        top_k (int): Number of top similar chunks to retrieve (default: 5)
+
+    Returns:
+        str: Formatted string containing retrieved information for LLM input
+    """
+
+    # Load the Chroma vector store
+    print("Loading Chroma vector store...")
+    vector_store = load_data_from_chroma()
+
+    if vector_store is None:
+        return "Error: Could not load Chroma vector store. Please check if the database is properly set up."
+
+    # Perform similarity search
+    try:
+        print(f"Searching for similar documents for query: '{user_prompt}'")
+        results = vector_store.similarity_search(user_prompt, k=top_k)
+
+        if not results:
+            return "No relevant information found in the database for your query."
+
+        print(f"Found {len(results)} relevant document(s)")
+
+        # Format the results for LLM input
+        formatted_results = format_results_for_llm(results, user_prompt)
+
+        return formatted_results
+
+    except Exception as e:
+        return f"Error during similarity search: {e}"
+
+def format_results_for_llm(results, user_prompt):
+    """
+    Format the retrieved chunks into a structured string for LLM input.
+
+    Args:
+        results: List of Document objects from similarity search
+        user_prompt (str): Original user query
+
+    Returns:
+        str: Formatted string ready for LLM input
+    """
+
+    # Start with the base instruction
+    formatted_text = f"According to user's problem: '{user_prompt}', find following information:\n\n"
+
+    # Add each retrieved chunk with source information
+    for i, doc in enumerate(results, 1):
+        # Extract source file name from metadata
+        source_file = doc.metadata.get('source', 'Unknown Source')
+        if '\\' in source_file:
+            source_file = source_file.split('\\')[-1]  # Get just the filename
+
+        # Extract page number if available
+        page = doc.metadata.get('page', 'Unknown Page')
+
+        formatted_text += f"--- Information {i} (Source: {source_file}, Page: {page}) ---\n"
+        formatted_text += f"{doc.page_content}\n\n"
+
+    # Add the final instruction
+    formatted_text += "You can only answer based on above information."
+
+    return formatted_text
+
+def test_rag_function():
+    """Test function to demonstrate RAG retrieval"""
+
+    test_queries = [
+        "How do cats use their sense of smell?",
+        "What are mutualistic fungi?",
+        "Tell me about transportation transformations",
+        "Why did people abandon hunting and gathering?",
+        "What makes Mercury so dense?",
+        "How do marine mammals adapt to their environment?"
+    ]
+
+    for query in test_queries:
+        print(f"\n{'='*60}")
+        print(f"Testing query: {query}")
+        print(f"{'='*60}")
+
+        result = rag_retrieve(query)
+        print(result)
+        print(f"\n{'='*60}")
+
+if __name__ == "__main__":
+    # Run test function
+    test_rag_function()
