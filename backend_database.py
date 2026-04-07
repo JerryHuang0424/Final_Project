@@ -29,7 +29,7 @@ def get_embbeding_model(EMBEDDING_MODEL):
         print(f"Error loading embedding model: {e}")
         return None
 
-def load_and_process_pdf(pdf_path_or_directory):
+def load_and_process_pdf(pdf_path_or_directory = r"data\raw_data"):
     """Load and process PDF file(s) - can accept a single file path or a directory path
     After successful processing, PDF files are removed from the raw_data folder."""
 
@@ -97,6 +97,7 @@ def load_and_process_pdf(pdf_path_or_directory):
 
 
 def load_data_from_chroma():
+    load_and_process_pdf()
     try:
         embeddings = get_embbeding_model('sentence-transformers/all-mpnet-base-v2')
         vector_store = Chroma(persist_directory=r"data\chroma", collection_name="Document_vector", embedding_function=embeddings)
@@ -108,8 +109,7 @@ def load_data_from_chroma():
 
 if __name__ == "__main__":
     # Process all PDF files in the data/raw_data directory
-    raw_data_directory = r"data\raw_data"
-    load_and_process_pdf(raw_data_directory)
+    # raw_data_directory = r"data\raw_data"
     vector_store = load_data_from_chroma()
     print(f'Vector store loaded with {vector_store._collection.count()} documents.')
         
